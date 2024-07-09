@@ -1,11 +1,11 @@
 from rest_framework import viewsets, generics
-
 from rest_framework.permissions import IsAuthenticated
 
 from courses.models import Course, Lesson, Subscription
 from courses.paginator import CoursePaginator
 from courses.permissions import IsModerator, IsOwner, IsSubscriber
 from courses.serializers import CourseSerializer, LessonSerializer, SubscriptionSerializer
+from courses.tasks import send_email_about_course_updates
 from users.models import UserRoles
 
 
@@ -32,7 +32,9 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
         if self.action == 'create':
             permission_classes = [IsAuthenticated, ~IsModerator]
-        elif self.action == 'list' or self.action == 'retrieve':
+        elif self.action == 'list':
+            permission_classes = [IsAuthenticated]
+        elif self.action == 'retrieve':
             permission_classes = [IsAuthenticated, IsModerator | IsOwner]
         elif self.action == 'update' or self.action == 'destroy':
             permission_classes = [IsAuthenticated, IsOwner]
@@ -72,6 +74,16 @@ class LessonUpdateAPIView(generics.UpdateAPIView):
     serializer_class = LessonSerializer
     queryset = Lesson.objects.all()
     permission_classes = [IsAuthenticated, IsOwner]
+
+    def perform_update(self, serializer):
+        serializer.save()
+        pk = self.kwargs.get('pk')
+        course = Lesson.objects.get(pk=pk).course
+        subscriptions = Subscription.objects.filter(course=course)
+
+        if subscriptions:
+            for subscription in subscriptions:
+                send_email_about_course_updates.delay(subscription.pk)
 
 
 class LessonDestroyAPIView(generics.DestroyAPIView):
