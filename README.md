@@ -18,7 +18,7 @@
 git@github.com:petrovi-4/homework_26.2.git
 ```
 
-### ==Из Docker контейнера==
+### Из Docker контейнера
 
 **Запустить контейнер**
 
@@ -26,7 +26,7 @@ git@github.com:petrovi-4/homework_26.2.git
 docker-compose up -d —build 
 ```
 
-### ==Без Docker==
+### Без Docker
 
 **Создать и активировать виртуальное окружение:**
 
